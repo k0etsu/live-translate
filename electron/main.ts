@@ -7,8 +7,11 @@ import { pythonManager } from './python/manager'
 
 const isDev = process.env.NODE_ENV === 'development'
 
-// __dirname = dist/electron/ — two levels up is the project root
+// appRoot: used for web assets (dist/index.html) — inside ASAR in prod
 const appRoot = path.join(__dirname, '../..')
+
+// pythonRoot: used for python/ scripts and presets — placed via extraResources, outside ASAR in prod
+const pythonRoot = isDev ? appRoot : process.resourcesPath
 
 function preloadPath(): string {
   return path.join(__dirname, 'preload.js')
@@ -130,7 +133,7 @@ function closeOverlayWindow(): void {
 
 app.on('ready', () => {
   pythonManager.init()
-  registerHandlers(getMainWindow, getOverlayWindow, createOverlayWindow, closeOverlayWindow, appRoot)
+  registerHandlers(getMainWindow, getOverlayWindow, createOverlayWindow, closeOverlayWindow, pythonRoot)
   createMainWindow()
 
 })
