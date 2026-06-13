@@ -1,287 +1,132 @@
-# Live Translate - Real-time Speech Translation Application
+# Live Translate
 
-A cross-platform Electron application that provides real-time speech-to-text translation with an always-on-top overlay window.
+Real-time Japanese-to-English speech translation with an always-on-top overlay. Powered by [kotoba-whisper](https://huggingface.co/kotoba-tech/kotoba-whisper-bilingual-v1.0) running locally — no API keys or internet connection required after initial model download.
 
 ## Features
 
-✨ **Core Features**
-- Real-time speech recognition (Web Speech API or OpenAI Whisper)
-- Multiple translation engines (Google Translate, DeepL, Google Apps Script)
-- Bidirectional translation: English ↔ Japanese
-- **Advanced Audio Capture** with multiple source options:
-  - 🎤 Microphone input with configurable sensitivity
-  - 🔊 System audio capture (Windows/macOS/Linux)
-  - 🪟 Application-specific audio capture
-  - Real-time audio level monitoring and visualization
-  - Automatic gain control, echo cancellation, noise suppression
-  - Multiple audio device support with device switching
-  - Configurable sample rates (16kHz, 44.1kHz, 48kHz)
-  - Audio buffer size adjustment for performance tuning
-- Semi-transparent, draggable overlay window for displaying translations
-- Customizable overlay appearance (opacity, colors, font size)
-- API key management with secure local storage
-- Light and dark theme support
+- Real-time transcription and translation via a local Whisper model
+- Always-on-top overlay window with configurable appearance
+- GPU acceleration via CUDA (optional, falls back to CPU)
+- Captures any audio source: microphone, system audio, virtual cables (VoiceMeeter, VB-Audio, etc.)
+- Voice activity detection (VAD) with dynamic audio chunking
+- Preset system for saving and loading configurations
+- Light and dark theme
+- No API keys required
 
-🎯 **Advanced Capabilities**
-- Multi-source audio capture (microphone, system, application)
-- Multiple speech recognition and translation backends
-- Real-time audio level meters with peak detection
-- Audio processing pipeline with professional features
-- Settings persistence across sessions
-- Cross-platform support (Windows, macOS, Linux)
-- Modern, responsive UI
+## Requirements
 
-## Project Structure
-
-```
-live-translate/
-├── electron/              # Electron main process
-│   ├── main.ts           # App initialization & window management
-│   └── preload.ts        # IPC bridge for security
-├── src/
-│   ├── components/       # Vue components
-│   │   └── Overlay.vue   # Translation overlay window
-│   ├── services/         # Business logic
-│   │   ├── translationService.ts
-│   │   ├── speechRecognitionService.ts
-│   │   ├── audioCaptureService.ts
-│   │   └── storageService.ts
-│   ├── types/            # TypeScript interfaces
-│   │   └── index.ts
-│   ├── assets/           # CSS and static files
-│   ├── App.vue           # Main application component
-│   ├── main.ts           # Vue app entry
-│   └── overlay-main.ts   # Overlay app entry
-├── public/               # Static assets
-├── index.html            # Main window HTML
-├── overlay.html          # Overlay window HTML
-├── vite.config.ts        # Vite configuration
-├── tsconfig.json         # TypeScript configuration
-└── package.json          # Dependencies and scripts
-```
+- Windows, macOS, or Linux
+- No Python installation required — the app manages its own isolated environment via [uv](https://github.com/astral-sh/uv)
+- For GPU acceleration: an NVIDIA GPU with CUDA-compatible drivers
 
 ## Installation
 
+Download the latest release for your platform from the [Releases](../../releases) page:
+
+| Platform | File |
+|---|---|
+| Windows | `Live.Translate.0.0.1.exe` — run directly, no install needed |
+| macOS (Intel) | `Live.Translate-0.0.1-mac.zip` — unzip and run |
+| macOS (Apple Silicon) | `Live.Translate-0.0.1-arm64-mac.zip` — unzip and run |
+| Linux | `Live.Translate-0.0.1.AppImage` — `chmod +x` then run |
+
+On first launch, go to the **Setup** tab and click **Set Up Environment**. The app will download Python 3.11 and install all required packages (~2 GB including PyTorch).
+
+## First-time setup
+
+1. Launch the app
+2. Open the **Setup** tab
+3. Click **Set Up Environment** — this downloads Python 3.11 and installs all packages
+4. Optionally click **Install CUDA PyTorch** if you have an NVIDIA GPU
+5. Switch to the **Capture** tab, select your audio device, and click **Start Listening**
+6. The model downloads automatically on first start (~1.6 GB, cached to `~/.cache/translator_models/`)
+
+## Building from source
+
 ### Prerequisites
-- Node.js 16+ and npm/yarn
+
+- Node.js 20+
 - Git
+- Windows Developer Mode enabled (required for symlink creation during packaging)
 
 ### Setup
 
-1. Clone or navigate to the project directory:
 ```bash
+git clone https://github.com/k0etsu/live-translate.git
 cd live-translate
-```
-
-2. Install dependencies:
-```bash
 npm install
 ```
 
-3. Create `.env.local` file with your API keys:
-```env
-VITE_OPENAI_API_KEY=your_openai_key
-VITE_DEEPL_API_KEY=your_deepl_key
-VITE_GOOGLE_APPS_SCRIPT_URL=your_google_apps_script_url
-```
+`npm install` automatically downloads the `uv` binary for your platform.
 
-## Usage
+### Development
 
-### Development Mode
-
-Run both Vite dev server and Electron in parallel:
 ```bash
 npm run dev:all
 ```
 
-Or run them separately:
-```bash
-# Terminal 1: Start Vite dev server
-npm run dev
+### Production build
 
-# Terminal 2: Start Electron
-npm run electron
+```bash
+# Windows
+npm run build:win
+
+# macOS
+npm run build:mac
+
+# Linux
+npm run build:linux
 ```
 
-### Production Build
+Output is placed in `release/`.
 
-Build the application:
-```bash
-npm run build
+## Project structure
+
+```
+live-translate/
+├── electron/
+│   ├── config/         # electron-store config persistence
+│   ├── ipc/            # IPC channel definitions and handlers
+│   ├── python/         # Python process management and uv venv setup
+│   ├── main.ts         # Window management, app lifecycle
+│   └── preload.ts      # Secure IPC bridge
+├── overlay/            # Overlay window (separate HTML entry point)
+├── python/
+│   ├── modules/        # Audio capture, VAD, model inference, filters
+│   ├── presets/        # Bundled default presets
+│   ├── backend.py      # JSON line protocol entry point
+│   └── requirements.txt
+├── scripts/
+│   └── download-uv.js  # Postinstall: downloads uv binary
+├── shared/
+│   └── types.ts        # Shared TypeScript types (Config, OverlayStyle, etc.)
+├── src/
+│   ├── components/     # Vue components (DeviceSelector, OverlayControls, PresetsPanel, CudaSetup)
+│   └── App.vue         # Main UI (5-tab layout)
+└── .github/workflows/
+    └── release.yml     # CI: builds for all platforms on version tag push
 ```
 
-Run the built application:
-```bash
-npm start
-```
+## How it works
 
-## Configuration
+The Electron main process spawns a Python subprocess (`python/backend.py`) and communicates over stdin/stdout using a JSON line protocol. The Python backend handles audio capture via `soundcard`, voice activity detection via Silero VAD, and transcription/translation via the kotoba-whisper model loaded through HuggingFace Transformers.
 
-### API Keys
-
-The application supports three translation services:
-
-1. **Google Translate (via Google Apps Script)**
-   - Free tier available
-   - Create a Google Apps Script that wraps the Google Translate API
-   - Paste the deployment URL in settings
-
-2. **DeepL API**
-   - Sign up at https://www.deepl.com/pro
-   - Free tier with 500,000 characters/month
-   - Paste API key in settings
-
-3. **OpenAI Whisper + GPT**
-   - For speech recognition: OpenAI Whisper
-   - For translation: GPT-3.5/GPT-4
-   - Requires OpenAI API key with credits
-
-## Configuration
-
-### API Keys
-
-The application supports three translation services:
-
-1. **Google Translate (via Google Apps Script)**
-   - Free tier available
-   - Create a Google Apps Script that wraps the Google Translate API
-   - Paste the deployment URL in settings
-
-2. **DeepL API**
-   - Sign up at https://www.deepl.com/pro
-   - Free tier with 500,000 characters/month
-   - Paste API key in settings
-
-3. **OpenAI Whisper + GPT**
-   - For speech recognition: OpenAI Whisper
-   - For translation: GPT-3.5/GPT-4
-   - Requires OpenAI API key with credits
-
-### Audio Input Options
-
-The application supports multiple audio sources:
-
-#### 1. Microphone Input
-- Direct capture from system microphone
-- Configurable sensitivity and gain control
-- Automatic echo cancellation
-- Noise suppression
-- Perfect for speech-to-speech translation
-
-#### 2. System Audio Capture
-- Capture audio from system speakers/output
-- Monitor any audio playing on your system
-- Translate music lyrics, dialog, notifications
-- Supported on Windows, macOS, and Linux
-
-#### 3. Application Audio Capture
-- Select specific applications to capture
-- Useful for translating game audio, video calls, etc.
-- Mix microphone with application audio if needed
-
-#### Advanced Audio Features
-- **Real-time Level Monitoring**: Visual feedback of input levels
-- **Automatic Gain Control**: Maintains consistent input levels
-- **Echo Cancellation**: Removes speaker feedback
-- **Noise Suppression**: Reduces background noise
-- **Sample Rate Selection**: 16kHz (voice), 44.1kHz (CD), 48kHz (pro)
-- **Buffer Size Tuning**: Adjust for latency vs CPU usage
-- **Multiple Device Support**: Switch between audio devices on the fly
-- **Audio Level Meters**: Peak and average level visualization
-
-For detailed audio configuration information, see [AUDIO_CAPTURE_GUIDE.md](AUDIO_CAPTURE_GUIDE.md)
-
-### Customizing the Overlay
-- **Opacity**: 0-100% transparency
-- **Background Color**: Any RGB color
-- **Font Size**: 12-32px
-- **Font Color**: Any RGB color
-
-All settings persist automatically.
-
-## Development Guide
-
-### Adding a New Translation Engine
-
-1. Update `AppSettings` in [src/types/index.ts](src/types/index.ts)
-2. Add translation method in [src/services/translationService.ts](src/services/translationService.ts)
-3. Add UI option in [src/App.vue](src/App.vue)
-
-### Adding a New Speech Recognition Engine
-
-1. Add method in [src/services/speechRecognitionService.ts](src/services/speechRecognitionService.ts)
-2. Update the `startListening` method to handle the new engine
-3. Add UI option in [src/App.vue](src/App.vue)
-
-## Architecture
-
-### Main Process (Electron)
-- Handles window management (main window + overlay)
-- Manages IPC communication
-- Controls app lifecycle
-
-### Renderer Process (Vue)
-- Main application UI (settings, controls, output)
-- Speech recognition and translation coordination
-- Overlay window display
-
-### Services
-- **TranslationService**: Handles API communication with various translation backends
-- **SpeechRecognitionService**: Manages speech input using Web Speech API or Whisper
-- **AudioCaptureService**: Captures audio from system/application
-- **StorageService**: Persists user settings to localStorage
-
-## Security Considerations
-
-- ✅ Context isolation enabled in Electron
-- ✅ Preload script for secure IPC
-- ✅ No node integration in renderer
-- ✅ Sandbox enabled
-- ✅ API keys stored locally only (never sent to servers)
+The overlay is a separate frameless transparent Electron window that stays on top of other applications and receives text updates via IPC.
 
 ## Troubleshooting
 
-### Microphone not working
-- Check browser permissions for microphone access
-- Verify system audio settings
-- Try "Web Speech API" engine first
+**Python environment not detected after setup**
+Delete `%APPDATA%\live-translate\venv` and run Set Up Environment again.
 
-### Translation fails
-- Verify API keys are correct
-- Check internet connection
-- Ensure API key has remaining quota
-- Check browser console for detailed errors
+**CUDA not detected after installing CUDA PyTorch**
+Restart the app after installation completes.
 
-### Overlay not appearing
-- Ensure overlay is toggled "on" in main window
-- Check if application has focus
-- Try restarting the application
+**Overlay not appearing**
+Click Show Overlay on the Capture tab. The overlay may be positioned off-screen — check the Overlay tab and adjust position by dragging after it appears.
 
-## Future Enhancements
-
-- 🎙️ Noise suppression for audio input
-- 🌐 Support for more language pairs
-- 📊 Translation history panel
-- 🔤 Keyboard shortcut customization
-- 🎨 More theme options
-- 📱 Mobile app support
-- ⚙️ Advanced audio processing options
-- 🔊 Speaker output translation (hearing assistance)
-- 🎮 Gaming subtitle overlay
-- 💬 Real-time conversation translation (side-by-side)
+**SmartScreen warning on Windows / Gatekeeper warning on macOS**
+The app is unsigned. On Windows: click "More info" then "Run anyway". On macOS: right-click the app, select Open, then click Open.
 
 ## License
 
 GNU General Public License v3.0
-
-## Contributing
-
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
----
-
-**Note**: This project requires valid API keys for translation and speech recognition services. Free tiers are available for most services.
