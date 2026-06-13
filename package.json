@@ -1,7 +1,8 @@
 {
   "name": "live-translate",
-  "version": "2.0.0",
+  "version": "0.0.1",
   "description": "Real-time Japanese-to-English translation overlay",
+  "author": "k0etsu",
   "main": "dist/electron/main.js",
   "type": "commonjs",
   "scripts": {
@@ -79,7 +80,6 @@
           ]
         }
       ],
-      "hardenedRuntime": true,
       "gatekeeperAssess": false
     },
     "linux": {
