@@ -1,171 +1,148 @@
-const { app, BrowserWindow, ipcMain, Menu } = require('electron')
-const path = require('path')
-const http = require('http')
+import { app, BrowserWindow } from 'electron'
+import * as path from 'path'
+import * as http from 'http'
+import { registerHandlers } from './ipc/handlers'
+import { getConfig, setConfig } from './config/store'
+import { pythonManager } from './python/manager'
 
-// Check if running in development mode
 const isDev = process.env.NODE_ENV === 'development'
 
-// In production, __dirname is dist/electron, so we need to go up 2 levels to project root
-// In development, __dirname is electron/, so we need to go up 1 level to project root
-const appRoot = path.join(__dirname, isDev ? '..' : '../..')
-const preloadPath = isDev 
-  ? path.join(appRoot, 'dist/electron/preload.js')
-  : path.join(__dirname, 'preload.js')
+// __dirname = dist/electron/ — two levels up is the project root
+const appRoot = path.join(__dirname, '../..')
 
-let mainWindow: any = null
-let overlayWindow: any = null
+function preloadPath(): string {
+  return path.join(__dirname, 'preload.js')
+}
 
-// Check if dev server is running
-function isDevServerRunning(): Promise<boolean> {
+function isDevServerUp(): Promise<boolean> {
   return new Promise((resolve) => {
-    const req = http.get('http://localhost:5173/', (res: any) => {
+    const req = http.get('http://localhost:5173/', (res) => {
       resolve(res.statusCode === 200)
     })
     req.on('error', () => resolve(false))
-    req.setTimeout(1000, () => {
-      req.destroy()
-      resolve(false)
-    })
+    req.setTimeout(1000, () => { req.destroy(); resolve(false) })
   })
 }
 
-function createMainWindow() {
+let mainWindow:    BrowserWindow | null = null
+let overlayWindow: BrowserWindow | null = null
+
+function getMainWindow()    { return mainWindow }
+function getOverlayWindow() { return overlayWindow }
+
+async function createMainWindow(): Promise<void> {
+  const cfg = getConfig()
+  const hasSavedPos = cfg.mainWindowX >= 0 && cfg.mainWindowY >= 0
+
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 700,
+    width:     cfg.mainWindowWidth,
+    height:    cfg.mainWindowHeight,
+    ...(hasSavedPos ? { x: cfg.mainWindowX, y: cfg.mainWindowY } : {}),
+    minWidth:  620,
+    minHeight: 580,
+    title: 'Live Translate',
+    frame: false,
     webPreferences: {
-      preload: preloadPath,
+      preload: preloadPath(),
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: true
+      sandbox: false,
     },
-    icon: path.join(appRoot, 'public/icon.svg')
   })
 
-  // Determine URL: try dev server if available, otherwise use built files
-  let indexUrl: string
-  if (isDev) {
-    indexUrl = 'http://localhost:5173'
-  } else {
-    indexUrl = `file://${path.join(appRoot, 'dist/index.html')}`
-  }
+  const devUp = isDev && await isDevServerUp()
+  const url   = devUp
+    ? 'http://localhost:5173'
+    : `file://${path.join(appRoot, 'dist/index.html')}`
 
-  mainWindow.loadURL(indexUrl)
-  
-  // Open DevTools in development mode and show errors if loading fails
-  if (isDev) {
-    mainWindow.webContents.openDevTools()
-    // Log any failed resource loads
-    mainWindow.webContents.on('did-fail-load', (event: any, errorCode: number, errorDescription: string, validatedURL: string) => {
-      console.error(`Failed to load ${validatedURL}: ${errorCode} ${errorDescription}`)
-    })
-  }
+  mainWindow.loadURL(url)
+  if (isDev) mainWindow.webContents.openDevTools()
+
+  mainWindow.on('resized', () => {
+    const [w, h] = mainWindow!.getSize()
+    setConfig({ mainWindowWidth: w, mainWindowHeight: h })
+  })
+
+  mainWindow.on('moved', () => {
+    const [x, y] = mainWindow!.getPosition()
+    setConfig({ mainWindowX: x, mainWindowY: y })
+  })
 
   mainWindow.on('closed', () => {
     mainWindow = null
+    overlayWindow?.close()
+    overlayWindow = null
   })
 }
 
-function createOverlayWindow() {
+function createOverlayWindow(): void {
+  if (overlayWindow) { overlayWindow.show(); return }
+
+  const cfg = getConfig()
   overlayWindow = new BrowserWindow({
-    width: 400,
-    height: 100,
-    x: 100,
-    y: 100,
-    frame: false,
+    width:       cfg.overlayWidth,
+    height:      cfg.overlayHeight,
+    x:           cfg.overlayX,
+    y:           cfg.overlayY,
+    frame:       false,
     transparent: true,
     alwaysOnTop: true,
     skipTaskbar: true,
+    resizable:   true,
     webPreferences: {
-      preload: preloadPath,
+      preload: preloadPath(),
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: true
-    }
+      sandbox: false,
+    },
   })
 
   const overlayUrl = isDev
-    ? 'http://localhost:5173/overlay.html'
-    : `file://${path.join(appRoot, 'dist/overlay.html')}`
+    ? 'http://localhost:5173/overlay/overlay.html'
+    : `file://${path.join(appRoot, 'dist/overlay/overlay.html')}`
 
   overlayWindow.loadURL(overlayUrl)
   overlayWindow.setIgnoreMouseEvents(false)
-  overlayWindow.setFocusable(false)
 
-  if (isDev) {
-    overlayWindow.webContents.openDevTools()
-  }
-
-  overlayWindow.on('closed', () => {
-    overlayWindow = null
+  // Save position on first show (captures OS-placed initial position)
+  overlayWindow.once('show', () => {
+    const [x, y] = overlayWindow!.getPosition()
+    setConfig({ overlayX: x, overlayY: y })
   })
+
+  overlayWindow.on('moved', () => {
+    const [x, y] = overlayWindow!.getPosition()
+    setConfig({ overlayX: x, overlayY: y })
+  })
+
+  overlayWindow.on('resized', () => {
+    const [w, h] = overlayWindow!.getSize()
+    setConfig({ overlayWidth: w, overlayHeight: h })
+  })
+
+  overlayWindow.on('closed', () => { overlayWindow = null })
 }
 
-// IPC Handlers
-ipcMain.handle('create-overlay', () => {
-  if (!overlayWindow) {
-    createOverlayWindow()
-  }
-})
-
-ipcMain.handle('close-overlay', () => {
-  if (overlayWindow) {
-    overlayWindow.close()
-    overlayWindow = null
-  }
-})
-
-ipcMain.handle('update-overlay-text', (event: any, text: string) => {
-  if (overlayWindow) {
-    overlayWindow.webContents.send('text-updated', text)
-  }
-})
-
-ipcMain.handle('update-overlay-settings', (event: any, settings: any) => {
-  if (overlayWindow) {
-    overlayWindow.webContents.send('settings-updated', settings)
-  }
-})
+function closeOverlayWindow(): void {
+  overlayWindow?.close()
+  overlayWindow = null
+}
 
 app.on('ready', () => {
+  pythonManager.init()
+  registerHandlers(getMainWindow, getOverlayWindow, createOverlayWindow, closeOverlayWindow, appRoot)
   createMainWindow()
-  
-  const menu = Menu.buildFromTemplate([
-    {
-      label: 'File',
-      submenu: [
-        {
-          label: 'Exit',
-          accelerator: 'CmdOrCtrl+Q',
-          click: () => {
-            app.quit()
-          }
-        }
-      ]
-    },
-    {
-      label: 'View',
-      submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
-        { role: 'toggleDevTools' }
-      ]
-    }
-  ])
-  
-  Menu.setApplicationMenu(menu)
+
+})
+
+app.on('will-quit', () => {
+  pythonManager.kill()
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
+  if (process.platform !== 'darwin') app.quit()
 })
 
 app.on('activate', () => {
-  if (mainWindow === null) {
-    createMainWindow()
-  }
+  if (BrowserWindow.getAllWindows().length === 0) createMainWindow()
 })
-
-module.exports = { mainWindow, overlayWindow }

@@ -29,7 +29,16 @@ node_modules/
 # Build outputs
 dist/
 build/
+release/
 *.tsbuildinfo
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Downloaded binaries (fetched at npm install via scripts/download-uv.js)
+electron/resources/bin/
 
 # IDE
 .vscode/
@@ -172,5 +181,7 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 
-# github dir
-.github
+
+# workspace
+.vscode/
+*.code-workspace

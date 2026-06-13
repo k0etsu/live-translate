@@ -270,20 +270,9 @@ All settings persist automatically.
 - 🎮 Gaming subtitle overlay
 - 💬 Real-time conversation translation (side-by-side)
 
-## Documentation
-
-Comprehensive documentation is available in the following files:
-
-- **[README.md](README.md)** - Main feature documentation (this file)
-- **[QUICKSTART.md](QUICKSTART.md)** - 5-minute quick start guide
-- **[BUILD.md](BUILD.md)** - Development & deployment guide
-- **[ENV_SETUP.md](ENV_SETUP.md)** - API key configuration
-- **[AUDIO_CAPTURE_GUIDE.md](AUDIO_CAPTURE_GUIDE.md)** - Audio source and processing details
-- **[AUDIO_UI_INTEGRATION.md](AUDIO_UI_INTEGRATION.md)** - UI component implementation
-
 ## License
 
-MIT License - Feel free to use and modify
+GNU General Public License v3.0
 
 ## Contributing
 

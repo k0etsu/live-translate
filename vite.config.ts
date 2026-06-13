@@ -7,12 +7,12 @@ export default defineConfig({
   base: './',
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    }
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
   },
   server: {
     port: 5173,
-    strictPort: false
+    strictPort: false,
   },
   build: {
     outDir: 'dist',
@@ -20,8 +20,9 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: fileURLToPath(new URL('./index.html', import.meta.url)),
-        overlay: fileURLToPath(new URL('./overlay.html', import.meta.url))
-      }
-    }
-  }
+        overlay: fileURLToPath(new URL('./overlay/overlay.html', import.meta.url)),
+      },
+    },
+  },
+
 })

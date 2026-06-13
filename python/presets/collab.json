@@ -1,0 +1,20 @@
+{
+  "name": "collab",
+  "volumeThreshold": 0.01,
+  "useVadFilter": true,
+  "vadThreshold": 0.12,
+  "useDynamicChunking": true,
+  "dynamicMaxChunkSec": 2.0,
+  "dynamicSilenceTimeoutSec": 0.5,
+  "dynamicMinSpeechSec": 1.0,
+  "task": "translate",
+  "overlayFontSize": 20,
+  "overlayFontWeight": "bold",
+  "overlayOpacity": 0.85,
+  "overlayBgMode": "transparent",
+  "overlayBgColor": "#282828",
+  "overlayFontColor": "#ffffff",
+  "overlayTextShadow": true,
+  "overlayBorderWidth": 2,
+  "overlayBorderColor": "#000000"
+}
