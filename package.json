@@ -54,6 +54,7 @@
         "to": "python"
       }
     ],
+    "icon": "public/icon",
     "directories": {
       "buildResources": "public",
       "output": "release"

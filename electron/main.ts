@@ -37,6 +37,9 @@ async function createMainWindow(): Promise<void> {
   const cfg = getConfig()
   const hasSavedPos = cfg.mainWindowX >= 0 && cfg.mainWindowY >= 0
 
+  const iconExt  = process.platform === 'win32' ? 'ico' : process.platform === 'darwin' ? 'icns' : 'png'
+  const iconPath = path.join(appRoot, 'public', `icon.${iconExt}`)
+
   mainWindow = new BrowserWindow({
     width:     cfg.mainWindowWidth,
     height:    cfg.mainWindowHeight,
@@ -45,6 +48,7 @@ async function createMainWindow(): Promise<void> {
     minHeight: 580,
     title: 'Live Translate',
     frame: false,
+    icon: iconPath,
     webPreferences: {
       preload: preloadPath(),
       nodeIntegration: false,
