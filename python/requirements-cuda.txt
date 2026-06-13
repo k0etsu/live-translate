@@ -1,0 +1,6 @@
+# Install CUDA-compiled PyTorch (CUDA 12.8).
+# Run: pip install -r requirements-cuda.txt
+# Then restart the app to activate GPU acceleration.
+--index-url https://download.pytorch.org/whl/cu128
+torch
+torchaudio

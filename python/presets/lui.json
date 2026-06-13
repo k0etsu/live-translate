@@ -1,0 +1,20 @@
+{
+  "name": "lui",
+  "volumeThreshold": 0.009,
+  "useVadFilter": true,
+  "vadThreshold": 0.12,
+  "useDynamicChunking": true,
+  "dynamicMaxChunkSec": 6.0,
+  "dynamicSilenceTimeoutSec": 1.0,
+  "dynamicMinSpeechSec": 1.2,
+  "task": "translate",
+  "overlayFontSize": 20,
+  "overlayFontWeight": "bold",
+  "overlayOpacity": 0.85,
+  "overlayBgMode": "transparent",
+  "overlayBgColor": "#282828",
+  "overlayFontColor": "#ff8080",
+  "overlayTextShadow": true,
+  "overlayBorderWidth": 2,
+  "overlayBorderColor": "#000000"
+}
