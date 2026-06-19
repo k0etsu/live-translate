@@ -31,6 +31,7 @@ const schema: Store.Schema<Config> = {
   mainWindowHeight:  { type: 'number',  default: DEFAULT_CONFIG.mainWindowHeight },
   mainWindowX:       { type: 'number',  default: DEFAULT_CONFIG.mainWindowX },
   mainWindowY:       { type: 'number',  default: DEFAULT_CONFIG.mainWindowY },
+  theme:             { type: 'string',  default: DEFAULT_CONFIG.theme },
 }
 
 export const store = new Store<Config>({ schema })

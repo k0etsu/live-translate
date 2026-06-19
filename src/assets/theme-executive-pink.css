@@ -1,0 +1,14 @@
+.theme-executive-pink {
+  --bg:          #1a0e16;
+  --surface:     #2a1a22;
+  --surface2:    #32202a;
+  --border:      #482a38;
+  --text:        #f4e8f0;
+  --text-dim:    #9e7090;
+  --accent:      #9b2d6f;
+  --accent-dim:  rgba(155, 45, 111, 0.15);
+  --input-bg:    #2a1a22;
+  --ok:          #cf6c9e;
+  --ok-bg:       rgba(207, 108, 158, 0.10);
+  --ok-border:   rgba(207, 108, 158, 0.25);
+}

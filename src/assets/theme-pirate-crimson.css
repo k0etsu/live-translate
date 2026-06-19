@@ -1,0 +1,14 @@
+.theme-pirate-crimson {
+  --bg:          #1a0a0a;
+  --surface:     #2a1010;
+  --surface2:    #321414;
+  --border:      #4a1c1c;
+  --text:        #f4e8e8;
+  --text-dim:    #9e7070;
+  --accent:      #c0392b;
+  --accent-dim:  rgba(192, 57, 43, 0.15);
+  --input-bg:    #2a1010;
+  --ok:          #f5c842;
+  --ok-bg:       rgba(245, 200, 66, 0.10);
+  --ok-border:   rgba(245, 200, 66, 0.25);
+}

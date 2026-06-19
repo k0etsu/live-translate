@@ -30,6 +30,7 @@ export const CHANNELS = {
 
   // App
   RESTART_APP:     'app:restart',
+  APP_SET_ICON:    'app:set-icon',
   WINDOW_MINIMIZE: 'window:minimize',
   WINDOW_MAXIMIZE: 'window:maximize',
   WINDOW_CLOSE:    'window:close',

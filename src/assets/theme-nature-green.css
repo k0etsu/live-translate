@@ -1,0 +1,14 @@
+.theme-nature-green {
+  --bg:          #111a11;
+  --surface:     #1e2d1e;
+  --surface2:    #243524;
+  --border:      #2e482e;
+  --text:        #e8f4e6;
+  --text-dim:    #7a9e7a;
+  --accent:      #7cb87a;
+  --accent-dim:  rgba(124, 184, 122, 0.15);
+  --input-bg:    #1e2d1e;
+  --ok:          #e8c84a;
+  --ok-bg:       rgba(232, 200, 74, 0.10);
+  --ok-border:   rgba(232, 200, 74, 0.25);
+}

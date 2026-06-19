@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from 'electron'
 import * as path from 'path'
+import * as fs from 'fs'
 import * as http from 'http'
 import { registerHandlers } from './ipc/handlers'
 import { getConfig, setConfig } from './config/store'
@@ -37,8 +38,13 @@ async function createMainWindow(): Promise<void> {
   const cfg = getConfig()
   const hasSavedPos = cfg.mainWindowX >= 0 && cfg.mainWindowY >= 0
 
-  const iconExt  = process.platform === 'win32' ? 'ico' : process.platform === 'darwin' ? 'icns' : 'png'
-  const iconPath = path.join(appRoot, 'public', `icon.${iconExt}`)
+  const iconExt     = process.platform === 'win32' ? 'ico' : process.platform === 'darwin' ? 'icns' : 'png'
+  const themedIcon  = cfg.theme && !['dark', 'light'].includes(cfg.theme)
+    ? path.join(appRoot, 'public', 'icons', cfg.theme, `icon.${iconExt}`)
+    : ''
+  const iconPath    = (themedIcon && fs.existsSync(themedIcon))
+    ? themedIcon
+    : path.join(appRoot, 'public', `icon.${iconExt}`)
 
   mainWindow = new BrowserWindow({
     width:     cfg.mainWindowWidth,

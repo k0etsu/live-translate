@@ -39,6 +39,9 @@ export interface Config {
   mainWindowHeight:  number
   mainWindowX:       number   // -1 = not yet saved (let OS center)
   mainWindowY:       number
+
+  // UI theme
+  theme: 'dark' | 'light' | 'mechanic-teal' | 'nature-green' | 'pirate-crimson' | 'executive-pink' | 'nurse-green'
 }
 
 export const DEFAULT_CONFIG: Config = {
@@ -75,6 +78,8 @@ export const DEFAULT_CONFIG: Config = {
   mainWindowHeight:  760,
   mainWindowX:       -1,
   mainWindowY:       -1,
+
+  theme: 'dark',
 }
 
 // Sent to overlay window

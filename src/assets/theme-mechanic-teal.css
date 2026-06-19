@@ -1,0 +1,14 @@
+.theme-mechanic-teal {
+  --bg:          #0d1a1c;
+  --surface:     #1a2a2e;
+  --surface2:    #1f3237;
+  --border:      #2a4048;
+  --text:        #e0f4f1;
+  --text-dim:    #7aada6;
+  --accent:      #00bfa5;
+  --accent-dim:  rgba(0, 191, 165, 0.15);
+  --input-bg:    #1a2a2e;
+  --ok:          #00e676;
+  --ok-bg:       rgba(0, 230, 118, 0.10);
+  --ok-border:   rgba(0, 230, 118, 0.25);
+}

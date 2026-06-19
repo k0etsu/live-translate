@@ -83,6 +83,9 @@ contextBridge.exposeInMainWorld('electron', {
   restartApp: (): void =>
     ipcRenderer.send('app:restart'),
 
+  setAppIcon: (theme: string): void =>
+    ipcRenderer.send('app:set-icon', theme),
+
   // ── Window controls ───────────────────────────────────────────────────────
   minimizeWindow: (): void => ipcRenderer.send('window:minimize'),
   maximizeWindow: (): void => ipcRenderer.send('window:maximize'),

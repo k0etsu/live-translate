@@ -1,0 +1,14 @@
+.theme-nurse-green {
+  --bg:          #1a241d;
+  --surface:     #2b3b30;
+  --surface2:    #334438;
+  --border:      #3f5547;
+  --text:        #faf7f0;
+  --text-dim:    #9ab09e;
+  --accent:      #3f6b4d;
+  --accent-dim:  rgba(63, 107, 77, 0.15);
+  --input-bg:    #2b3b30;
+  --ok:          #c9a875;
+  --ok-bg:       rgba(201, 168, 117, 0.10);
+  --ok-border:   rgba(201, 168, 117, 0.25);
+}

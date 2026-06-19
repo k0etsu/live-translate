@@ -245,6 +245,15 @@ export function registerHandlers(
     app.exit()
   })
 
+  ipcMain.on(CHANNELS.APP_SET_ICON, (_e, theme: string) => {
+    const win = getMainWindow()
+    if (!win) return
+    const iconExt  = process.platform === 'win32' ? 'ico' : process.platform === 'darwin' ? 'icns' : 'png'
+    const themed   = path.join(appRoot, 'public', 'icons', theme, `icon.${iconExt}`)
+    const fallback = path.join(appRoot, 'public', `icon.${iconExt}`)
+    win.setIcon(fs.existsSync(themed) ? themed : fallback)
+  })
+
   ipcMain.on(CHANNELS.WINDOW_MINIMIZE, () => getMainWindow()?.minimize())
   ipcMain.on(CHANNELS.WINDOW_MAXIMIZE, () => {
     const win = getMainWindow()

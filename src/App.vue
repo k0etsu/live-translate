@@ -1,5 +1,5 @@
 <template>
-  <div :class="['app', theme]">
+  <div :class="['app', `theme-${theme}`]">
     <!-- Header -->
     <header class="header">
       <span class="logo">Live Translate</span>
@@ -8,9 +8,15 @@
           <span :class="['vad-dot', vadActive ? 'speaking' : '']"></span>
           Listening
         </span>
-        <button class="icon-btn no-drag" @click="theme = theme === 'dark' ? 'light' : 'dark'" title="Toggle theme">
-          {{ theme === 'dark' ? '☀' : '☾' }}
-        </button>
+        <select class="theme-select no-drag" v-model="theme" @change="onThemeChange" title="Theme">
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+          <option value="pirate-crimson">Pirate Crimson</option>
+          <option value="nature-green">Nature Green</option>
+          <option value="nurse-green">Nurse Green</option>
+          <option value="executive-pink">Executive Pink</option>
+          <option value="mechanic-teal">Mechanic Teal</option>
+        </select>
         <div class="win-controls no-drag">
           <button class="wc-btn" title="Minimize" @click="el.minimizeWindow()">&#x2013;</button>
           <button class="wc-btn" title="Maximize" @click="el.maximizeWindow()">&#x25A1;</button>
@@ -100,17 +106,21 @@
           </div>
         </div>
 
-        <!-- Output area -->
-        <div class="output-area">
-          <div v-if="lastTranscript" class="output-transcript">{{ lastTranscript }}</div>
-          <div v-if="lastTranslation" class="output-translation">{{ lastTranslation }}</div>
-          <div v-if="!lastTranscript && !lastTranslation" class="output-placeholder">
+        <!-- Translation history -->
+        <div class="translation-history">
+          <div v-if="translationHistory.length === 0" class="history-placeholder">
             Output will appear here when listening…
           </div>
-          <button v-if="lastTranslation || lastTranscript" class="copy-btn"
-            @click="copyOutput" title="Copy to clipboard">
-            {{ copied ? '✓ Copied' : 'Copy' }}
-          </button>
+          <div v-for="entry in translationHistory" :key="entry.id" class="history-entry">
+            <span class="history-time">{{ entry.ts }}</span>
+            <div class="history-body">
+              <div v-if="entry.transcript" class="history-jp">{{ entry.transcript }}</div>
+              <div v-if="entry.translation" class="history-en">{{ entry.translation }}</div>
+            </div>
+            <button class="copy-btn" @click="copyEntry(entry)" title="Copy">
+              {{ entry.copied ? '✓' : 'Copy' }}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -301,21 +311,30 @@ const TABS = [
 const el = (window as any).electron
 
 // ── State ──────────────────────────────────────────────────────────────────────
-const theme      = ref<'dark' | 'light'>('dark')
+type Theme = 'dark' | 'light' | 'mechanic-teal' | 'nature-green' | 'pirate-crimson' | 'executive-pink' | 'nurse-green'
+const theme      = ref<Theme>('dark')
 const activeTab  = ref('capture')
 const config     = reactive<Config>({ ...DEFAULT_CONFIG })
 
 const isListening   = ref(false)
 const overlayVisible= ref(false)
 const vadActive     = ref(false)
-const copied        = ref(false)
+
 
 const audioDevices  = ref<PyAudioDevice[]>([])
 const devicesLoading= ref(false)
 const devicesError  = ref('')
 
-const lastTranscript = ref('')
-const lastTranslation= ref('')
+interface HistoryEntry {
+  id:          number
+  transcript:  string
+  translation: string
+  ts:          string
+  copied:      boolean
+}
+const translationHistory = ref<HistoryEntry[]>([])
+let   historyIdCounter   = 0
+const MAX_HISTORY        = 50
 
 const pythonStatus = ref<{ found: boolean; version?: string; missingPackages?: string[] } | null>(null)
 const pkgInstalling= ref(false)
@@ -332,10 +351,17 @@ const setupLogEl  = ref<HTMLDivElement | null>(null)
 
 let unsubPython: (() => void) | null = null
 
+// ── Theme ──────────────────────────────────────────────────────────────────────
+function onThemeChange() {
+  el.setConfig({ theme: theme.value })
+  el.setAppIcon(theme.value)
+}
+
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 onMounted(async () => {
   const saved = await el.getConfig()
   Object.assign(config, saved)
+  if (saved.theme) theme.value = saved.theme
 
   pythonStatus.value = await el.checkPython()
 
@@ -374,8 +400,9 @@ function handlePythonMessage(msg: any) {
   } else if (msg.type === 'vad_active') {
     vadActive.value = msg.speaking ?? false
   } else if (msg.type === 'result') {
-    lastTranscript.value  = msg.transcript  ?? ''
-    lastTranslation.value = msg.translation ?? ''
+    const ts = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    translationHistory.value.unshift({ id: historyIdCounter++, transcript: msg.transcript ?? '', translation: msg.translation ?? '', ts, copied: false })
+    if (translationHistory.value.length > MAX_HISTORY) translationHistory.value.pop()
   } else if (msg.type === 'stats') {
     Object.assign(stats, msg)
   } else if (msg.type === 'stopped') {
@@ -391,9 +418,8 @@ async function toggleListening() {
     await el.stopPython()
     isListening.value = false
   } else {
-    lastTranscript.value  = ''
-    lastTranslation.value = ''
-    modelStatus.loaded    = false
+    translationHistory.value = []
+    modelStatus.loaded       = false
     saveConfig()
     await el.startPython({ ...config }, config.audioDeviceName)
     isListening.value = true
@@ -496,41 +522,43 @@ function onPresetLoad(partial: Partial<Config>) {
 }
 
 // ── Clipboard ─────────────────────────────────────────────────────────────────
-async function copyOutput() {
-  const text = [lastTranscript.value, lastTranslation.value].filter(Boolean).join('\n')
+async function copyEntry(entry: HistoryEntry) {
+  const text = [entry.transcript, entry.translation].filter(Boolean).join('\n')
   await navigator.clipboard.writeText(text)
-  copied.value = true
-  setTimeout(() => { copied.value = false }, 2000)
+  entry.copied = true
+  setTimeout(() => { entry.copied = false }, 2000)
 }
 </script>
 
 <style>
 /* ── CSS variables ──────────────────────────────────────────────────────────── */
 :root {
-  --bg:       #111114;
-  --surface:  #1c1c20;
-  --surface2: #242428;
-  --border:   #2e2e34;
-  --text:     #e8e8ec;
-  --text-dim: #888;
-  --accent:   #7c6bf5;
-  --input-bg: #1c1c20;
-  --ok:       #34d399;
-  --ok-bg:    rgba(52,211,153,0.12);
-  --ok-border:rgba(52,211,153,0.25);
+  --bg:          #111114;
+  --surface:     #1c1c20;
+  --surface2:    #242428;
+  --border:      #2e2e34;
+  --text:        #e8e8ec;
+  --text-dim:    #888;
+  --accent:      #7c6bf5;
+  --accent-dim:  rgba(124, 107, 245, 0.15);
+  --input-bg:    #1c1c20;
+  --ok:          #34d399;
+  --ok-bg:       rgba(52, 211, 153, 0.12);
+  --ok-border:   rgba(52, 211, 153, 0.25);
 }
-.light {
-  --bg:       #f5f5f7;
-  --surface:  #ffffff;
-  --surface2: #f0f0f2;
-  --border:   #d8d8dc;
-  --text:     #111114;
-  --text-dim: #666;
-  --accent:   #4338ca;
-  --input-bg: #ffffff;
-  --ok:       #047857;
-  --ok-bg:    rgba(4,120,87,0.08);
-  --ok-border:rgba(4,120,87,0.20);
+.theme-light {
+  --bg:          #f5f5f7;
+  --surface:     #ffffff;
+  --surface2:    #f0f0f2;
+  --border:      #d8d8dc;
+  --text:        #111114;
+  --text-dim:    #666;
+  --accent:      #4338ca;
+  --accent-dim:  rgba(67, 56, 202, 0.10);
+  --input-bg:    #ffffff;
+  --ok:          #047857;
+  --ok-bg:       rgba(4, 120, 87, 0.08);
+  --ok-border:   rgba(4, 120, 87, 0.20);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -564,13 +592,13 @@ body { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; }
 .listening-pill {
   display: flex; align-items: center; gap: 6px;
   font-size: 12px; padding: 3px 10px; border-radius: 12px;
-  background: rgba(124,107,245,0.15); color: var(--accent); font-weight: 600;
+  background: var(--accent-dim); color: var(--accent); font-weight: 600;
 }
 .vad-dot {
   width: 7px; height: 7px; border-radius: 50%;
   background: #555; transition: background .15s;
 }
-.vad-dot.speaking { background: #34d399; box-shadow: 0 0 6px #34d399; }
+.vad-dot.speaking { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
 
 /* ── Tabs ────────────────────────────────────────────────────────────────────── */
 .tabs {
@@ -643,23 +671,37 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 }
 .progress-bar {
   position: absolute; top: 0; left: 0; height: 100%;
-  background: rgba(124,107,245,0.18); transition: width .3s;
+  background: var(--accent-dim); transition: width .3s;
 }
 .progress-label { position: relative; font-size: 13px; }
 
-/* ── Output ──────────────────────────────────────────────────────────────────── */
-.output-area {
+/* ── Translation history ─────────────────────────────────────────────────────── */
+.translation-history {
   background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 10px; padding: 14px 16px; min-height: 90px;
-  display: flex; flex-direction: column; gap: 6px; position: relative;
+  border-radius: 10px; max-height: 320px; overflow-y: auto;
+  display: flex; flex-direction: column;
 }
-.output-transcript { font-size: 13px; opacity: .65; }
-.output-translation { font-size: 18px; font-weight: 600; line-height: 1.4; }
-.output-placeholder { font-size: 13px; opacity: .35; font-style: italic; }
+.history-placeholder {
+  padding: 24px 16px; text-align: center;
+  font-size: 13px; opacity: .35; font-style: italic;
+}
+.history-entry {
+  display: grid; grid-template-columns: 58px 1fr auto;
+  gap: 10px; align-items: start;
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+}
+.history-entry:last-child { border-bottom: none; }
+.history-time {
+  font-size: 11px; font-family: monospace; color: var(--text-dim);
+  padding-top: 3px; white-space: nowrap;
+}
+.history-body { display: flex; flex-direction: column; gap: 3px; }
+.history-jp   { font-size: 11px; font-weight: 400; color: var(--text-dim); line-height: 1.4; }
+.history-en   { font-size: 15px; font-weight: 600; line-height: 1.4; }
 .copy-btn {
-  align-self: flex-end; padding: 4px 10px; font-size: 11px;
-  border-radius: 5px; border: 1px solid var(--border); background: var(--surface);
-  color: var(--text-dim); cursor: pointer;
+  padding: 3px 9px; font-size: 11px; border-radius: 5px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-dim); cursor: pointer; white-space: nowrap;
 }
 
 /* ── Section titles ──────────────────────────────────────────────────────────── */
@@ -707,4 +749,12 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   font-size: 18px; padding: 4px 6px; border-radius: 5px; opacity: .7;
 }
 .icon-btn:hover { opacity: 1; }
+
+/* ── Theme selector ──────────────────────────────────────────────────────────── */
+.theme-select {
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); border-radius: 5px; padding: 3px 6px;
+  font-size: 12px; cursor: pointer;
+}
+.theme-select:focus { outline: none; border-color: var(--accent); }
 </style>

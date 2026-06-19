@@ -1,3 +1,6 @@
+# Theme SVG source files (committed as built icons in public/icons/)
+public/live_translation_fullsize_*.svg
+
 # Environment variables
 .env
 .env.local
