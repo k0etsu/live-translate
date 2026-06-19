@@ -5,6 +5,7 @@ Changes from source:
 - print() → log()
 - settings read from mutable settings_ref dict for live updates
 - model progress reported via emit() during load
+- translate mode runs a second transcribe pass to emit Japanese alongside English
 """
 
 import os
@@ -94,6 +95,16 @@ def load_model(settings_ref: dict) -> 'object | None':
             return None
 
 
+def _run_pipe(pipe, audio: np.ndarray, task: str, language: str, settings_ref: dict) -> str:
+    """Run one inference pass and return stripped text."""
+    gen_kwargs = get_kotoba_generate_kwargs(task, language)
+    gen_kwargs['temperature']          = float(settings_ref.get('temperature', 0.08))
+    gen_kwargs['max_new_tokens']       = int(settings_ref.get('max_new_tokens', 224))
+    gen_kwargs['no_repeat_ngram_size'] = int(settings_ref.get('no_repeat_ngram_size', 3))
+    result = pipe({'sampling_rate': SAMPLE_RATE, 'raw': audio}, generate_kwargs=gen_kwargs)
+    return result['text'].strip() if result else ''
+
+
 def processor_thread(
     stop_event: threading.Event,
     audio_queue: Queue,
@@ -103,6 +114,11 @@ def processor_thread(
     """
     Reads audio segments from audio_queue, runs ASR, emits results.
     Runs after load_model() has already been called and returned a pipeline.
+
+    In translate mode (JP→EN), runs two inference passes per chunk:
+      1. translate pass → English text (primary; hallucination-checked)
+      2. transcribe pass → Japanese text (only if English passed)
+    In transcribe mode, runs a single pass as before.
     """
     log('Processor thread started.')
     stats = TranslatorStats()
@@ -111,8 +127,8 @@ def processor_thread(
     try:
         while not stop_event.is_set():
             start = time.time()
-            had_translation    = False
-            was_hallucination  = False
+            had_translation   = False
+            was_hallucination = False
 
             try:
                 audio = audio_queue.get(timeout=1.0)
@@ -127,30 +143,44 @@ def processor_thread(
                     stats.add_chunk(time.time() - start, False, False)
                     continue
 
-                task       = settings_ref.get('task', 'translate')
-                target_lang= 'en' if task == 'translate' else settings_ref.get('language_code', 'en')
+                task = settings_ref.get('task', 'translate')
 
-                gen_kwargs = get_kotoba_generate_kwargs(task, target_lang)
-                gen_kwargs['temperature']          = float(settings_ref.get('temperature', 0.08))
-                gen_kwargs['max_new_tokens']       = int(settings_ref.get('max_new_tokens', 224))
-                gen_kwargs['no_repeat_ngram_size'] = int(settings_ref.get('no_repeat_ngram_size', 3))
+                if task == 'translate':
+                    # Pass 1: translate → English
+                    english = _run_pipe(pipe, audio, 'translate', 'en', settings_ref)
+                    had_translation = bool(english)
 
-                result = pipe({'sampling_rate': SAMPLE_RATE, 'raw': audio}, generate_kwargs=gen_kwargs)
-                text   = result['text'].strip() if result else ''
-
-                had_translation = bool(text)
-                if text:
-                    if is_hallucination(text):
-                        was_hallucination = True
-                        log(f'Filtered: {text[:60]!r}')
-                    else:
-                        text = post_process_translation(text)
-                        record_translation(text)
-                        log(f'Result: {text}')
-
-                        if task == 'translate':
-                            emit({'type': 'result', 'transcript': '', 'translation': text})
+                    if english:
+                        if is_hallucination(english):
+                            was_hallucination = True
+                            log(f'Filtered: {english[:60]!r}')
                         else:
+                            english = post_process_translation(english)
+                            record_translation(english)
+
+                            # Pass 2: transcribe → Japanese (only after valid English)
+                            try:
+                                japanese = _run_pipe(pipe, audio, 'transcribe', 'ja', settings_ref)
+                            except Exception as e:
+                                log(f'Transcribe pass failed: {e}')
+                                japanese = ''
+
+                            log(f'Result: {english}')
+                            emit({'type': 'result', 'transcript': japanese, 'translation': english})
+                else:
+                    # Transcribe-only mode
+                    lang = settings_ref.get('language_code', 'ja')
+                    text = _run_pipe(pipe, audio, 'transcribe', lang, settings_ref)
+                    had_translation = bool(text)
+
+                    if text:
+                        if is_hallucination(text):
+                            was_hallucination = True
+                            log(f'Filtered: {text[:60]!r}')
+                        else:
+                            text = post_process_translation(text)
+                            record_translation(text)
+                            log(f'Result: {text}')
                             emit({'type': 'result', 'transcript': text, 'translation': ''})
 
             except Exception as e:
