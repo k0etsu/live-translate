@@ -38,13 +38,24 @@ async function createMainWindow(): Promise<void> {
   const cfg = getConfig()
   const hasSavedPos = cfg.mainWindowX >= 0 && cfg.mainWindowY >= 0
 
-  const iconExt     = process.platform === 'win32' ? 'ico' : process.platform === 'darwin' ? 'icns' : 'png'
-  const themedIcon  = cfg.theme && !['dark', 'light'].includes(cfg.theme)
-    ? path.join(appRoot, 'public', 'icons', cfg.theme, `icon.${iconExt}`)
-    : ''
-  const iconPath    = (themedIcon && fs.existsSync(themedIcon))
-    ? themedIcon
-    : path.join(appRoot, 'public', `icon.${iconExt}`)
+  const iconExt = process.platform === 'win32' ? 'ico' : process.platform === 'darwin' ? 'icns' : 'png'
+  // In production the exe already has the default icon embedded by electron-builder.
+  // Theme-specific icons live in extraResources/icons/ (outside ASAR).
+  // In dev they're in public/icons/.
+  let iconPath: string | undefined
+  if (app.isPackaged) {
+    if (cfg.theme && !['dark', 'light'].includes(cfg.theme)) {
+      const p = path.join(process.resourcesPath, 'icons', cfg.theme, `icon.${iconExt}`)
+      if (fs.existsSync(p)) iconPath = p
+    }
+  } else {
+    const themed = cfg.theme && !['dark', 'light'].includes(cfg.theme)
+      ? path.join(appRoot, 'public', 'icons', cfg.theme, `icon.${iconExt}`)
+      : ''
+    iconPath = (themed && fs.existsSync(themed))
+      ? themed
+      : path.join(appRoot, 'public', `icon.${iconExt}`)
+  }
 
   mainWindow = new BrowserWindow({
     width:     cfg.mainWindowWidth,

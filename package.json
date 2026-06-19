@@ -57,6 +57,10 @@
       {
         "from": "python",
         "to": "python"
+      },
+      {
+        "from": "public/icons",
+        "to": "icons"
       }
     ],
     "icon": "public/icon",
