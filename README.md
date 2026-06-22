@@ -26,7 +26,8 @@ Download the latest release for your platform from the [Releases](../../releases
 
 | Platform | File |
 |---|---|
-| Windows | `Live.Translate.0.1.0.exe` — run directly, no install needed |
+| Windows | `Live.Translate.*.zip` — extract and run `Live Translate.exe` |
+| Windows | `Live.Translate.*.exe` — portable single-file, no extraction needed |
 | macOS (Intel) | `Live.Translate-0.1.0-mac.zip` — unzip and run |
 | macOS (Apple Silicon) | `Live.Translate-0.1.0-arm64-mac.zip` — unzip and run |
 | Linux | `Live.Translate-0.1.0.AppImage` — `chmod +x` then run |

@@ -1,6 +1,6 @@
 {
   "name": "live-translate",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Real-time Japanese-to-English translation overlay",
   "author": "k0etsu",
   "main": "dist/electron/main.js",
@@ -71,12 +71,19 @@
     "win": {
       "target": [
         {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
           "target": "portable",
           "arch": [
             "x64"
           ]
         }
-      ]
+      ],
+      "artifactName": "Live.Translate.${version}.${ext}"
     },
     "mac": {
       "target": [

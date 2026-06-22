@@ -6,6 +6,8 @@ import { registerHandlers } from './ipc/handlers'
 import { getConfig, setConfig } from './config/store'
 import { pythonManager } from './python/manager'
 
+if (process.platform === 'win32') app.setAppUserModelId('com.livetranslate.app')
+
 const isDev = process.env.NODE_ENV === 'development'
 
 // appRoot: used for web assets (dist/index.html) — inside ASAR in prod
